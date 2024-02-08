@@ -419,9 +419,7 @@ fn game_loop() -> io::Result<()> {
             GLOBAL_STATE.write().unwrap().game_won = true;
         }
 
-        if board.remaining_tiles() == board.mines_count
-            || (board.remaining_tiles() + board.flagged_tiles()) == board.mines_count
-        {
+        if (board.remaining_tiles() + board.flagged_tiles()) == board.mines_count {
             board.flag_all_remaining_tiles();
             GLOBAL_STATE.write().unwrap().game_won = true;
         }
@@ -485,13 +483,6 @@ fn game_loop() -> io::Result<()> {
             Action::Reveal => board.reveal(x.get_num(), y.get_num()),
             Action::Flag => board.flag(x.get_num(), y.get_num()),
         }
-
-        println!(
-            "Tile at {} {} is now: {:?}",
-            x.get_num(),
-            y.get_num(),
-            board.tiles[(y.get_num() * board.cols) + x.get_num()]
-        );
     }
 
     Ok(())
