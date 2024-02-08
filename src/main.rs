@@ -311,7 +311,7 @@ fn game_loop() -> io::Result<()> {
     let mut stdin = String::new();
 
     println!("Please select board size");
-gith
+
     let boards = [
         Board::new(9, 9, 10),
         Board::new(16, 16, 40),
@@ -498,12 +498,6 @@ fn make_custom_board() -> Result<Board, CustomBoardError> {
         return Err(CustomBoardError::Error);
     }
 
-    if mines.get_num() == (cols.get_num() * rows.get_num())
-        || (cols.get_num() * rows.get_num()) < mines.get_num()
-    {
-        return Err(CustomBoardError::Error);
-    }
-
     // winmine minimums at least in the winmine from archive.org
     if cols.get_num() < 8 {
         cols = Input::Num(8)
@@ -515,6 +509,10 @@ fn make_custom_board() -> Result<Board, CustomBoardError> {
 
     if mines.get_num() < 10 {
         mines = Input::Num(10);
+    }
+
+    if mines.get_num() > (rows.get_num() - 1) * (cols.get_num() - 1) {
+        mines = Input::Num((rows.get_num() - 1) * (cols.get_num() - 1));
     }
 
     return Ok(Board::new(rows.get_num(), cols.get_num(), mines.get_num()));
