@@ -125,14 +125,24 @@ impl Board {
         tile.flag();
     }
 
+    pub fn remaining_tiles(&self) -> usize {
+        return self
+            .tiles
+            .iter()
+            .filter(|tile| !tile.revealed && !tile.has_flag)
+            .count();
+    }
+
+    pub fn flagged_tiles(&self) -> usize {
+        return self.tiles.iter().filter(|tile| tile.has_flag).count();
+    }
+
     // TODO: gave save us all from these horrible names
     fn get_neighboring_tiles(&self, x: usize, y: usize) -> Vec<(usize, usize)> {
         let mut neighbors: Vec<(usize, usize)> = Vec::new();
         // dumb solution, yes? Do I care, not really.
-        let signed_x = x as isize;
-        let signed_y = y as isize;
-        let tl_x = signed_x - 1;
-        let tl_y = signed_y - 1;
+        let tl_x = x as isize - 1;
+        let tl_y = y as isize - 1;
 
         for tile_x in 0..3 {
             for tile_y in 0..3 {
@@ -157,8 +167,35 @@ impl Board {
         neighbors
     }
 
+    pub fn flag_all_remaining_tiles(&mut self) {
+        if self.remaining_tiles() + self.flagged_tiles() != self.mines_count {
+            panic!("Auto win, but there are more tiles than mines");
+        }
+
+        let mine_tiles = self
+            .tiles
+            .iter_mut()
+            .filter(|tile| !tile.has_flag && !tile.revealed)
+            .collect::<Vec<_>>();
+
+        for tile in mine_tiles {
+            tile.flag();
+        }
+    }
+
     pub fn draw(&self) {
+        let mine_count = self.mines_count - self.tiles.iter().filter(|tile| tile.has_flag).count();
+        // use the max function because if the number is 0, the digits are 0
+        let digits = f64::max(f64::floor(f64::log10(mine_count as f64) + 1.0), 1.0) as usize;
+
         println!("   ┌{}┐", "─".repeat(self.cols));
+        println!(
+            "   │{string:<width$}{mine_count} │",
+            width = (self.cols - (digits + 1)),
+            string = " ".repeat(self.cols - (digits + 1)),
+            mine_count = mine_count
+        );
+        println!("   ├{}┤", "─".repeat(self.cols));
 
         for row in 0..self.rows {
             for col in 0..self.cols {
@@ -221,7 +258,11 @@ impl Board {
                         );
                     }
                 } else if tile.has_flag {
-                    print!("^");
+                    if GLOBAL_STATE.read().unwrap().game_ended {
+                        print!("\x1B[91m^\x1B0m");
+                    } else {
+                        print!("^");
+                    }
                 } else {
                     print!("#");
                 }
@@ -290,9 +331,7 @@ impl Tile {
     }
 
     fn flag(&mut self) {
-        println!("{}", self.has_flag);
         self.has_flag = !self.has_flag;
-        println!("{}", self.has_flag);
     }
 }
 
@@ -376,13 +415,14 @@ fn game_loop() -> io::Result<()> {
     loop {
         print!("\x1B[2J\x1B[1;1H");
 
-        if board
-            .tiles
-            .iter()
-            .filter(|tile| !tile.revealed && !tile.has_flag)
-            .count()
-            == 0
+        if board.remaining_tiles() == 0 {
+            GLOBAL_STATE.write().unwrap().game_won = true;
+        }
+
+        if board.remaining_tiles() == board.mines_count
+            || (board.remaining_tiles() + board.flagged_tiles()) == board.mines_count
         {
+            board.flag_all_remaining_tiles();
             GLOBAL_STATE.write().unwrap().game_won = true;
         }
 
